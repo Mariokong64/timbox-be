@@ -1,0 +1,33 @@
+{
+  "name": "timbox-be",
+  "version": "1.0.0",
+  "description": "Backend del sistema comercial TIMBOX",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js"
+  },
+  "keywords": [],
+  "author": "Mario",
+  "license": "ISC",
+  "packageManager": "pnpm@10.27.0",
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "pg": "^8.21.0"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^25.6.2",
+    "@types/pg": "^8.20.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.6.3"
+  }
+}
