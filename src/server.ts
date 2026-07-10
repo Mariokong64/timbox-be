@@ -1,13 +1,12 @@
-import express from "express";
 import app from "./app";
 import { pool } from "./config/database";
-const PORT = process.env.PORT || 3000;
+import { env } from "./config/env";
 
-app.listen(PORT, () => {
-  console.log(`Servidor corriendo en http://localhost:${PORT}`);
+app.listen(env.port, () => {
+  console.log(`Servidor corriendo en http://localhost:${env.port}`);
 });
 
-pool.connect().then(() => {
+pool.query("SELECT 1").then(() => {
     console.log("Base de datos conectada");
   }).catch((error: unknown) => {
     if (error instanceof Error) {

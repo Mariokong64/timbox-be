@@ -1,11 +1,12 @@
 import express from "express";
-import cors from "cors";
 import authRoutes from "./modules/autenticacion/auth.routes";
-import { authMiddleware, AuthRequest } from "./middlewares/auth.middleware";
+import { corsMiddleware } from "./config/cors";
+import publicRoutes from "./routes/public.routes";
+import privateRoutes from "./routes/private.routes";
 
 const app = express();
 
-app.use(cors());
+app.use(corsMiddleware);
 app.use(express.json());
 
 app.get("/", (_req, res) => {
@@ -13,19 +14,7 @@ app.get("/", (_req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
-
-app.get(
-  "/api/privado/prueba",
-  authMiddleware,
-  (req: AuthRequest, res) => {
-
-    res.json({
-      ok: true,
-      usuario: req.usuario,
-      mensaje: "Acceso autorizado"
-    });
-
-  }
-);
+app.use("/api/public", publicRoutes);
+app.use("/api/private", privateRoutes);
 
 export default app;

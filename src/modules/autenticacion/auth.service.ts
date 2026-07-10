@@ -1,9 +1,14 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import { env } from "../../config/env";
 import { buscarUsuarioPorUsuario } from "./auth.repository";
 import { LoginRequest } from "./auth.types";
 
 export async function loginService(data: LoginRequest) {
+  if (!data?.usuario || !data?.contrasena) {
+    throw new Error("Usuario y contrasena son obligatorios");
+  }
+
   const usuarioEncontrado = await buscarUsuarioPorUsuario(data.usuario);
 
   if (!usuarioEncontrado) {
@@ -19,7 +24,7 @@ export async function loginService(data: LoginRequest) {
     throw new Error("Usuario o contraseña incorrectos");
   }
 
-  const secret = process.env.JWT_SECRET;
+  const secret = env.jwtSecret;
 
   if (!secret) {
     throw new Error("JWT_SECRET no está configurado en el archivo .env");
