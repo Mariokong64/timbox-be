@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { loginService } from "./auth.service";
+import { ErrorLogin, loginService } from "./auth.service";
 
 export async function loginController(req: Request, res: Response) {
   try {
@@ -7,20 +7,22 @@ export async function loginController(req: Request, res: Response) {
 
     return res.status(200).json({
       ok: true,
-      message: "Login correcto",
+      message: "Sesión iniciada correctamente.",
       data: resultado,
     });
   } catch (error: unknown) {
-    if (error instanceof Error) {
-      return res.status(401).json({
+    if (error instanceof ErrorLogin) {
+      return res.status(error.statusCode).json({
         ok: false,
         message: error.message,
-      }); 
+      });
     }
+
+    console.error("Error al iniciar sesión.", error);
 
     return res.status(500).json({
       ok: false,
-      message: "Error interno del servidor",
+      message: "No se pudo iniciar sesión.",
     });
   }
 }

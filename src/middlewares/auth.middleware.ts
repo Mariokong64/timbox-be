@@ -13,21 +13,14 @@ export interface AuthRequest extends Request {
   usuario?: JwtPayload;
 }
 
-export const authMiddleware = (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-): void => {
-
+export const authMiddleware = (req: AuthRequest, res: Response, next: NextFunction): void => {
   try {
-
     const authHeader = req.headers.authorization;
 
     if (!authHeader) {
-
       res.status(401).json({
         ok: false,
-        message: "Token no proporcionado"
+        message: "Token no proporcionado",
       });
 
       return;
@@ -36,20 +29,18 @@ export const authMiddleware = (
     const [type, token] = authHeader.split(" ");
 
     if (type !== "Bearer" || !token) {
-
       res.status(401).json({
         ok: false,
-        message: "Formato de token inválido"
+        message: "Formato de token inválido",
       });
 
       return;
     }
 
     if (!env.jwtSecret) {
-
       res.status(500).json({
         ok: false,
-        message: "JWT_SECRET no configurado"
+        message: "JWT_SECRET no configurado",
       });
 
       return;
@@ -60,14 +51,11 @@ export const authMiddleware = (
     req.usuario = payload;
 
     next();
-
   } catch (error: unknown) {
-
     if (error instanceof jwt.TokenExpiredError) {
-
       res.status(401).json({
         ok: false,
-        message: "Token expirado"
+        message: "Token expirado",
       });
 
       return;
@@ -75,7 +63,7 @@ export const authMiddleware = (
 
     res.status(401).json({
       ok: false,
-      message: "Token inválido"
+      message: "Token inválido",
     });
   }
 };

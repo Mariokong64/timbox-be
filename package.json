@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "hash:contrasena": "tsx src/scripts/generarHashContrasena.ts",
+    "verificar:contrasena": "tsx src/scripts/verificarContrasena.ts"
   },
   "keywords": [],
   "author": "Mario",
