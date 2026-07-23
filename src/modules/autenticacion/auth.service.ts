@@ -1,6 +1,7 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { env } from "../../config/env";
+import { verificarCaptcha } from "../../shared/services/recaptcha.service";
 import { buscarUsuarioPorIdentificador } from "./auth.repository";
 import { LoginRequest, LoginResponse, UsuarioAuth, UsuarioSesion } from "./auth.types";
 
@@ -28,9 +29,18 @@ function crearUsuarioSesion(usuario: UsuarioAuth): UsuarioSesion {
 export async function loginService(data: LoginRequest): Promise<LoginResponse> {
   const identificador = limpiarTexto(data?.usuario);
   const contrasena = limpiarTexto(data?.contrasena);
+  const captchaToken = limpiarTexto(data?.captchaToken);
 
   if (!identificador || !contrasena) {
     throw new ErrorLogin("Usuario y contraseña son obligatorios.", 400);
+  }
+
+  try {
+    await verificarCaptcha(captchaToken);
+  } catch (error) {
+    const mensaje = error instanceof Error ? error.message : "No se pudo verificar el captcha.";
+
+    throw new ErrorLogin(mensaje, 400);
   }
 
   const usuarioEncontrado = await buscarUsuarioPorIdentificador(identificador);
