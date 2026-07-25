@@ -42,36 +42,97 @@ function mapearSolicitudReciente(row: SolicitudRecienteDashboardRow): SolicitudR
   };
 }
 
-async function obtenerResumenContacto(): Promise<ResumenContactoDashboard> {
-  const resumenQuery = `
+const FUENTES_SOLICITUDES = `
+  WITH solicitudes AS (
     SELECT
-      COUNT(*) AS total,
-      COUNT(*) FILTER (WHERE es.estatus = 'Atendida') AS atendidas,
-      COUNT(*) FILTER (WHERE es.estatus = 'Nueva' OR es.estatus ILIKE 'En atenci%') AS pendientes,
-      COUNT(*) FILTER (WHERE es.estatus ILIKE 'En atenci%') AS en_atencion,
-      COUNT(*) FILTER (WHERE es.estatus = 'Descartada') AS descartadas
+      sc.id,
+      sc.nombre,
+      sc.correo,
+      es.estatus,
+      'Formulario público'::text AS origen,
+      sc.fecha_registro
     FROM contacto.solicitudes_contacto sc
     INNER JOIN contacto.estatus_solicitudes es ON es.id = sc.estatus_id
+    INNER JOIN contacto.origenes o ON o.id = sc.origen_id
+    WHERE LOWER(o.origen) LIKE 'formulario%'
+
+    UNION ALL
+
+    SELECT
+      c.id,
+      sv.nombre,
+      sv.correo,
+      CASE
+        WHEN c.fecha_fin IS NOT NULL THEN 'Atendida'
+        WHEN EXISTS (
+          SELECT 1
+          FROM chatbot.mensajes m
+          INNER JOIN chatbot.emisores e ON e.id = m.emisor_id
+          WHERE m.conversacion_id = c.id
+            AND e.emisor = 'Administrador'
+        ) THEN 'En atención'
+        ELSE 'Nueva'
+      END AS estatus,
+      'Chat'::text AS origen,
+      c.fecha_inicio AS fecha_registro
+    FROM chatbot.conversaciones c
+    INNER JOIN chatbot.sesiones_visitantes sv
+      ON sv.id = c.sesion_visitante_id
+  )
+`;
+
+async function obtenerResumenContacto(): Promise<ResumenContactoDashboard> {
+  const resumenQuery = `${FUENTES_SOLICITUDES}
+    SELECT
+      COUNT(*) AS total,
+      COUNT(*) FILTER (WHERE estatus = 'Atendida') AS atendidas,
+      COUNT(*) FILTER (
+        WHERE estatus = 'Nueva' OR estatus ILIKE 'En atenci%'
+      ) AS pendientes,
+      COUNT(*) FILTER (WHERE estatus ILIKE 'En atenci%') AS en_atencion,
+      COUNT(*) FILTER (WHERE estatus = 'Descartada') AS descartadas
+    FROM solicitudes
   `;
 
-  const porEstatusQuery = `
-    SELECT es.estatus AS etiqueta, COUNT(sc.id) AS valor
-    FROM contacto.estatus_solicitudes es
-    LEFT JOIN contacto.solicitudes_contacto sc ON sc.estatus_id = es.id
-    GROUP BY es.estatus
-    ORDER BY valor DESC, es.estatus ASC
+  const porEstatusQuery = `${FUENTES_SOLICITUDES},
+    catalogo(etiqueta, orden) AS (
+      VALUES
+        ('Nueva', 1),
+        ('En atención', 2),
+        ('Atendida', 3),
+        ('Descartada', 4)
+    )
+    SELECT
+      catalogo.etiqueta,
+      COUNT(solicitudes.id) AS valor
+    FROM catalogo
+    LEFT JOIN solicitudes
+      ON LOWER(solicitudes.estatus) = LOWER(catalogo.etiqueta)
+      OR (
+        catalogo.etiqueta = 'En atención'
+        AND solicitudes.estatus ILIKE 'En atenci%'
+      )
+    GROUP BY catalogo.etiqueta, catalogo.orden
+    ORDER BY catalogo.orden
   `;
 
-  const porOrigenQuery = `
-    SELECT o.origen AS etiqueta, COUNT(sc.id) AS valor
-    FROM contacto.origenes o
-    LEFT JOIN contacto.solicitudes_contacto sc ON sc.origen_id = o.id
-    GROUP BY o.origen
-    ORDER BY valor DESC, o.origen ASC
+  const porOrigenQuery = `${FUENTES_SOLICITUDES},
+    origenes(etiqueta, orden) AS (
+      VALUES
+        ('Formulario público', 1),
+        ('Chat', 2)
+    )
+    SELECT
+      origenes.etiqueta,
+      COUNT(solicitudes.id) AS valor
+    FROM origenes
+    LEFT JOIN solicitudes ON solicitudes.origen = origenes.etiqueta
+    GROUP BY origenes.etiqueta, origenes.orden
+    ORDER BY origenes.orden
   `;
 
-  const porDiaQuery = `
-    WITH dias AS (
+  const porDiaQuery = `${FUENTES_SOLICITUDES},
+    dias AS (
       SELECT generate_series(
         CURRENT_DATE - INTERVAL '13 days',
         CURRENT_DATE,
@@ -80,26 +141,24 @@ async function obtenerResumenContacto(): Promise<ResumenContactoDashboard> {
     )
     SELECT
       TO_CHAR(dias.fecha, 'YYYY-MM-DD') AS fecha,
-      COUNT(sc.id) AS total
+      COUNT(solicitudes.id) AS total
     FROM dias
-    LEFT JOIN contacto.solicitudes_contacto sc
-      ON sc.fecha_registro::date = dias.fecha
+    LEFT JOIN solicitudes
+      ON solicitudes.fecha_registro::date = dias.fecha
     GROUP BY dias.fecha
     ORDER BY dias.fecha ASC
   `;
 
-  const recientesQuery = `
+  const recientesQuery = `${FUENTES_SOLICITUDES}
     SELECT
-      sc.id,
-      sc.nombre,
-      sc.correo,
-      es.estatus,
-      o.origen,
-      sc.fecha_registro
-    FROM contacto.solicitudes_contacto sc
-    INNER JOIN contacto.estatus_solicitudes es ON es.id = sc.estatus_id
-    INNER JOIN contacto.origenes o ON o.id = sc.origen_id
-    ORDER BY sc.fecha_registro DESC
+      id,
+      nombre,
+      correo,
+      estatus,
+      origen,
+      fecha_registro
+    FROM solicitudes
+    ORDER BY fecha_registro DESC
     LIMIT 6
   `;
 
