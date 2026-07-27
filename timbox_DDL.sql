@@ -20,18 +20,13 @@ CREATE TABLE contenidos.secciones (
     descripcion TEXT
 );
 
-CREATE TABLE contenidos.estatus_enlaces (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    estatus VARCHAR(50) NOT NULL UNIQUE,
-    descripcion TEXT
-);
-
 CREATE TABLE contenidos.contenidos (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     clave VARCHAR(100) NOT NULL UNIQUE,
     contenido TEXT NOT NULL,
     seccion_id UUID NOT NULL,
     fecha_actualizacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
 
     CONSTRAINT fk_contenidos_seccion
         FOREIGN KEY (seccion_id)
@@ -46,20 +41,20 @@ CREATE TABLE contenidos.enlaces_url (
     url TEXT NOT NULL,
     seccion_id UUID NOT NULL,
     fecha_actualizacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    estatus_id UUID NOT NULL,
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
 
     CONSTRAINT fk_enlaces_url_seccion
         FOREIGN KEY (seccion_id)
         REFERENCES contenidos.secciones(id)
         ON UPDATE CASCADE
-        ON DELETE RESTRICT,
-
-    CONSTRAINT fk_enlaces_url_estatus
-        FOREIGN KEY (estatus_id)
-        REFERENCES contenidos.estatus_enlaces(id)
-        ON UPDATE CASCADE
         ON DELETE RESTRICT
 );
+
+CREATE INDEX ix_contenidos_seccion_activo
+    ON contenidos.contenidos (seccion_id, activo);
+
+CREATE INDEX ix_enlaces_url_seccion_activo
+    ON contenidos.enlaces_url (seccion_id, activo);
 
 -- =========================
 -- SYS
@@ -239,17 +234,43 @@ CREATE TABLE cfdi.validaciones_cfdi (
 -- CATÁLOGOS CONTENIDOS
 -- =========================
 
-INSERT INTO contenidos.estatus_enlaces (estatus, descripcion) VALUES
-('Activo', 'El enlace se encuentra disponible para su uso en el sitio público.'),
-('Inactivo', 'El enlace no debe mostrarse o utilizarse en el sitio público.');
-
 INSERT INTO contenidos.secciones (seccion, descripcion) VALUES
-('Inicio', 'Contenido mostrado en la página principal del sitio público.'),
-('Integración tecnológica', 'Contenido relacionado con la sección de la integración tecnológica'),
-('Soluciones', 'Contenido relacionado con la sección de soluciones'),
-('Soporte y documentación', 'Contenido mostrado en la sección de soporte y documentación'),
-('Políticas y términos legales', 'Contenido mostrado en la sección de las políticas y términos legales'),
-('Preguntas frecuantes FAQ', 'Contenido de la parte de las preguntas frecuentes');
+('Empresa', 'Textos administrables de la sección Empresa del sitio público.'),
+('Soluciones', 'Textos administrables de la sección Soluciones del sitio público.'),
+('General', 'Enlaces generales reutilizados en distintas secciones del sitio público.'),
+('Integradores', 'Repositorios y recursos de integración publicados en el sitio.');
+
+INSERT INTO contenidos.enlaces_url (clave, url, seccion_id, activo)
+SELECT datos.clave, datos.url, seccion.id, TRUE
+FROM (
+  VALUES
+    ('general.dashboard_registro', 'http://grupotum.com:9020/registro'),
+    ('general.dashboard_acceso', 'http://grupotum.com:9020/acceso')
+) AS datos(clave, url)
+CROSS JOIN contenidos.secciones AS seccion
+WHERE LOWER(seccion.seccion) = 'general';
+
+INSERT INTO contenidos.enlaces_url (clave, url, seccion_id, activo)
+SELECT datos.clave, datos.url, seccion.id, TRUE
+FROM (
+  VALUES
+    ('integradores.net', 'https://github.com/TimboxIntegracion/timbox-.net'),
+    ('integradores.java', 'https://github.com/TimboxIntegracion/timbox-java'),
+    ('integradores.php', 'https://github.com/TimboxIntegracion/timbox-php'),
+    ('integradores.python', 'https://github.com/TimboxIntegracion/timbox-python'),
+    ('integradores.ruby', 'https://github.com/TimboxIntegracion/timbox-ruby'),
+    ('integradores.web_dev', 'https://github.com/TimboxIntegracion/timbox-webdev'),
+    ('integradores.vfoxpro', 'https://github.com/TimboxIntegracion/timbox-vfoxpro'),
+    ('integradores.vb', 'https://github.com/TimboxIntegracion/timbox-vb'),
+    ('integradores.nodejs', 'https://github.com/TimboxIntegracion/NodeJS-WebServiceAPI'),
+    ('integradores.laravel', 'https://github.com/TimboxIntegracion/Laravel-WebServiceAPI'),
+    ('integradores.visual_csharp_dll', 'https://github.com/TimboxIntegracion/Ejemplo-CSharp-DLL'),
+    ('integradores.visual_basic_dll', 'https://github.com/TimboxIntegracion/Ejemplo-VB-DLL'),
+    ('integradores.foxpro_dll', 'https://github.com/TimboxIntegracion/Ejemplo-VFP-DLL'),
+    ('integradores.delphi_dll', 'https://github.com/TimboxIntegracion/Ejemplo-Delphi-DLL')
+) AS datos(clave, url)
+CROSS JOIN contenidos.secciones AS seccion
+WHERE LOWER(seccion.seccion) = 'integradores';
 
 -- =========================
 -- CATÁLOGOS CHATBOT
