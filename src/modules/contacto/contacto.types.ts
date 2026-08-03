@@ -75,3 +75,16 @@ export interface RespuestaSolicitudContactoRow {
 export interface GuardarRespuestaContactoRequest {
   respuesta?: unknown;
 }
+
+export interface EnvioSolicitudContactoPendiente {
+  envio_id: string;
+  intentos: number;
+  correo_destinatario: string;
+  solicitud_contacto_id: string;
+  nombre: string;
+  correo: string;
+  telefono: string | null;
+  rfc: string | null;
+  mensaje: string | null;
+  fecha_registro: Date;
+}

@@ -15,6 +15,7 @@ import {
   SolicitudContactoDetalle,
   SolicitudContactoResumen,
 } from "./contacto.types";
+import { procesarNotificacionesSolicitudContacto } from "./contacto.notificaciones.service";
 
 const correoRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const telefonoRegex = /^[0-9\s()+-]{8,20}$/;
@@ -87,7 +88,17 @@ export async function registrarContactoService(
 
   await verificarCaptcha(datos.captchaToken);
 
-  return crearSolicitudContacto(datosLimpios);
+  const solicitud = await crearSolicitudContacto(datosLimpios);
+
+  void procesarNotificacionesSolicitudContacto(solicitud.id).catch((error) => {
+    const mensaje = error instanceof Error ? error.message : String(error);
+    console.error(
+      `No fue posible iniciar el envío de la solicitud ${solicitud.id}:`,
+      mensaje
+    );
+  });
+
+  return solicitud;
 }
 
 function normalizarFiltroEstado(valor: unknown): FiltroEstadoSolicitud {
