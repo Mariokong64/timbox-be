@@ -1,9 +1,12 @@
 import { Request, Response } from "express";
-import { registrarContactoService } from "./contacto.service";
+import { registrarSolicitudContacto } from "./solicitudes.servicio";
 
-export async function registrarContactoController(req: Request, res: Response) {
+export async function registrarSolicitudContactoControlador(
+  req: Request,
+  res: Response
+): Promise<Response> {
   try {
-    const solicitud = await registrarContactoService(req.body);
+    const solicitud = await registrarSolicitudContacto(req.body);
 
     return res.status(201).json({
       ok: true,

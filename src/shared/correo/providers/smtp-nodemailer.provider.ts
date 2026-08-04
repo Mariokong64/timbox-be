@@ -16,10 +16,6 @@ export class SmtpNodemailerProvider implements ProveedorCorreo {
       throw new Error("Falta configurar la variable de entorno SMTP_HOST.");
     }
 
-    if (!configuracion.from) {
-      throw new Error("Falta configurar la variable de entorno SMTP_FROM.");
-    }
-
     if (Boolean(configuracion.user) !== Boolean(configuracion.password)) {
       throw new Error(
         "SMTP_USER y SMTP_PASSWORD deben configurarse juntos o dejarse ambos vacíos."
@@ -48,7 +44,7 @@ export class SmtpNodemailerProvider implements ProveedorCorreo {
 
   async enviar(mensaje: MensajeCorreo): Promise<ResultadoEnvioCorreo> {
     const resultado = await this.transportador.sendMail({
-      from: env.correo.smtp.from,
+      from: mensaje.remitente,
       to: mensaje.destinatario,
       replyTo: mensaje.responderA,
       subject: mensaje.asunto,

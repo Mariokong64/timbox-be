@@ -3,6 +3,7 @@ export interface Usuario {
   usuario: string;
   nombre: string;
   correo: string;
+  fotoPerfil: string | null;
   fechaRegistro: Date;
   creado: Date;
   modificado: Date | null;
@@ -13,6 +14,7 @@ export interface UsuarioRow {
   usuario: string;
   nombre: string;
   correo: string;
+  foto_perfil: string | null;
   fecha_registro: Date;
   creado: Date;
   modificado: Date | null;

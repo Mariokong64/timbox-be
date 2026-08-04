@@ -1,7 +1,6 @@
 import app from "./app";
 import { pool } from "./config/database";
 import { env } from "./config/env";
-import { iniciarProcesadorNotificacionesContacto } from "./modules/contacto/contacto.notificaciones.service";
 
 app.listen(env.port, () => {
   console.log(`Servidor corriendo en http://localhost:${env.port}`);
@@ -9,7 +8,6 @@ app.listen(env.port, () => {
 
 pool.query("SELECT 1").then(() => {
     console.log("Base de datos conectada");
-    void iniciarProcesadorNotificacionesContacto();
   }).catch((error: unknown) => {
     if (error instanceof Error) {
       console.error("Error conectando BD:", error.message);

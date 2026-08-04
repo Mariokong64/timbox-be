@@ -1,4 +1,5 @@
 export interface MensajeCorreo {
+  remitente: string;
   destinatario: string;
   asunto: string;
   texto: string;

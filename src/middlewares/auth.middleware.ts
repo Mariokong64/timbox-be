@@ -7,6 +7,7 @@ export interface JwtPayload {
   usuario: string;
   nombre: string;
   correo: string;
+  fotoPerfil: string | null;
 }
 
 export interface AuthRequest extends Request {

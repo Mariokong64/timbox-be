@@ -12,6 +12,7 @@ function mapearUsuario(row: UsuarioRow): Usuario {
     usuario: row.usuario,
     nombre: row.nombre,
     correo: row.correo,
+    fotoPerfil: row.foto_perfil,
     fechaRegistro: row.fecha_registro,
     creado: row.creado,
     modificado: row.modificado,
@@ -20,7 +21,7 @@ function mapearUsuario(row: UsuarioRow): Usuario {
 
 export async function obtenerUsuarios(): Promise<Usuario[]> {
   const query = `
-    SELECT id, usuario, nombre, correo, fecha_registro, creado, modificado
+    SELECT id, usuario, nombre, correo, foto_perfil, fecha_registro, creado, modificado
     FROM sys.usuarios
     ORDER BY nombre ASC
   `;
@@ -32,7 +33,7 @@ export async function obtenerUsuarios(): Promise<Usuario[]> {
 
 export async function obtenerUsuarioPorId(id: string): Promise<Usuario | null> {
   const query = `
-    SELECT id, usuario, nombre, correo, fecha_registro, creado, modificado
+    SELECT id, usuario, nombre, correo, foto_perfil, fecha_registro, creado, modificado
     FROM sys.usuarios
     WHERE id = $1
     LIMIT 1
@@ -69,7 +70,7 @@ export async function crearUsuario(datos: UsuarioDatosCreacion): Promise<Usuario
       creado_por_id
     )
     VALUES ($1, $2, $3, $4, $5)
-    RETURNING id, usuario, nombre, correo, fecha_registro, creado, modificado
+    RETURNING id, usuario, nombre, correo, foto_perfil, fecha_registro, creado, modificado
   `;
 
   const result = await pool.query<UsuarioRow>(query, [
@@ -93,7 +94,7 @@ export async function actualizarUsuario(datos: UsuarioDatosActualizacion): Promi
         modificado = CURRENT_TIMESTAMP,
         modificado_por_id = $6
     WHERE id = $1
-    RETURNING id, usuario, nombre, correo, fecha_registro, creado, modificado
+    RETURNING id, usuario, nombre, correo, foto_perfil, fecha_registro, creado, modificado
   `;
 
   const result = await pool.query<UsuarioRow>(query, [

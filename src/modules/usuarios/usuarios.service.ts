@@ -1,4 +1,5 @@
 import bcrypt from "bcrypt";
+import { eliminarArchivoFotoPerfil } from "../perfil/perfil.servicio";
 import {
   actualizarUsuario,
   crearUsuario,
@@ -169,5 +170,11 @@ export async function eliminarUsuarioService(id: string, usuarioSesionId: string
 
   if (!eliminado) {
     throw new ErrorUsuarios("No se pudo eliminar el usuario.", 400);
+  }
+
+  try {
+    await eliminarArchivoFotoPerfil(usuario.fotoPerfil);
+  } catch (error) {
+    console.error("El usuario fue eliminado, pero no se pudo borrar su fotografía.", error);
   }
 }

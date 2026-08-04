@@ -66,6 +66,7 @@ CREATE TABLE sys.usuarios (
     nombre VARCHAR(150) NOT NULL,
     contrasena TEXT NOT NULL,
     correo VARCHAR(150) NOT NULL UNIQUE,
+    foto_perfil TEXT,
 
     fecha_registro TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     creado TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,

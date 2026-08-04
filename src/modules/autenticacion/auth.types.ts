@@ -10,6 +10,7 @@ export interface UsuarioAuth {
   nombre: string;
   correo: string;
   contrasena: string;
+  foto_perfil: string | null;
 }
 
 export interface UsuarioSesion {
@@ -17,6 +18,7 @@ export interface UsuarioSesion {
   usuario: string;
   nombre: string;
   correo: string;
+  fotoPerfil: string | null;
 }
 
 export interface LoginResponse {
@@ -29,4 +31,5 @@ export interface JwtPayload {
   usuario: string;
   nombre: string;
   correo: string;
+  fotoPerfil: string | null;
 }

@@ -23,6 +23,7 @@ function crearUsuarioSesion(usuario: UsuarioAuth): UsuarioSesion {
     usuario: usuario.usuario,
     nombre: usuario.nombre,
     correo: usuario.correo,
+    fotoPerfil: usuario.foto_perfil,
   };
 }
 

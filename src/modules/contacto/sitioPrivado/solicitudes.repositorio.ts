@@ -1,81 +1,13 @@
-import { pool } from "../../config/database";
+import { pool } from "../../../config/database";
 import {
-  ContactoDatosLimpios,
+  DestinatarioRespuestaSolicitud,
+  FilaRespuestaSolicitudContacto,
+  FilaSolicitudContacto,
   FiltroEstadoSolicitud,
   RespuestaSolicitudContacto,
-  RespuestaSolicitudContactoRow,
-  SolicitudContactoCreada,
   SolicitudContactoDetalle,
-  SolicitudContactoRow,
   SolicitudContactoResumen,
-} from "./contacto.types";
-import { crearEnviosPendientesSolicitud } from "./contacto.notificaciones.repository";
-
-const ESTATUS_INICIAL = "Nueva";
-const ORIGEN_FORMULARIO_PUBLICO = "Formulario publico";
-const ORIGEN_FORMULARIO_PUBLICO_CON_ACENTO = "Formulario público";
-
-export async function crearSolicitudContacto(
-  datos: ContactoDatosLimpios
-): Promise<SolicitudContactoCreada> {
-  const cliente = await pool.connect();
-
-  try {
-    await cliente.query("BEGIN");
-
-    const result = await cliente.query<SolicitudContactoCreada>(
-      `INSERT INTO contacto.solicitudes_contacto (
-         nombre,
-         correo,
-         telefono,
-         rfc,
-         mensaje,
-         estatus_id,
-         origen_id
-       )
-       VALUES (
-         $1,
-         $2,
-         $3,
-         $4,
-         $5,
-         (SELECT id FROM contacto.estatus_solicitudes WHERE estatus = $6 LIMIT 1),
-         (
-           SELECT id
-           FROM contacto.origenes
-           WHERE origen IN ($7, $8)
-           LIMIT 1
-         )
-       )
-       RETURNING id, fecha_registro`,
-      [
-        datos.nombre,
-        datos.correo,
-        datos.telefono,
-        datos.rfc,
-        datos.mensaje,
-        ESTATUS_INICIAL,
-        ORIGEN_FORMULARIO_PUBLICO,
-        ORIGEN_FORMULARIO_PUBLICO_CON_ACENTO,
-      ]
-    );
-    const solicitud = result.rows[0];
-
-    if (!solicitud) {
-      throw new Error("No se pudo registrar la solicitud de contacto.");
-    }
-
-    await crearEnviosPendientesSolicitud(cliente, solicitud.id);
-    await cliente.query("COMMIT");
-
-    return solicitud;
-  } catch (error) {
-    await cliente.query("ROLLBACK");
-    throw error;
-  } finally {
-    cliente.release();
-  }
-}
+} from "./solicitudes.tipos";
 
 const CAMPOS_SOLICITUD = `
   sc.id,
@@ -94,7 +26,7 @@ const CAMPOS_SOLICITUD = `
 `;
 
 function mapearSolicitud(
-  fila: SolicitudContactoRow
+  fila: FilaSolicitudContacto
 ): SolicitudContactoResumen {
   return {
     id: fila.id,
@@ -109,10 +41,22 @@ function mapearSolicitud(
   };
 }
 
+function mapearRespuesta(
+  fila: FilaRespuestaSolicitudContacto
+): RespuestaSolicitudContacto {
+  return {
+    id: fila.id,
+    detalles: fila.detalles,
+    fechaAtencion: fila.fecha_atencion.toISOString(),
+    usuarioId: fila.usuario_id,
+    nombreUsuario: fila.nombre_usuario,
+  };
+}
+
 export async function listarSolicitudesContacto(
   estado: FiltroEstadoSolicitud
 ): Promise<SolicitudContactoResumen[]> {
-  const resultado = await pool.query<SolicitudContactoRow>(
+  const resultado = await pool.query<FilaSolicitudContacto>(
     `SELECT ${CAMPOS_SOLICITUD}
      FROM contacto.solicitudes_contacto sc
      INNER JOIN contacto.estatus_solicitudes es
@@ -145,7 +89,7 @@ export async function listarSolicitudesContacto(
 export async function obtenerSolicitudContactoPorId(
   id: string
 ): Promise<SolicitudContactoDetalle | null> {
-  const resultado = await pool.query<SolicitudContactoRow>(
+  const resultado = await pool.query<FilaSolicitudContacto>(
     `SELECT ${CAMPOS_SOLICITUD}
      FROM contacto.solicitudes_contacto sc
      INNER JOIN contacto.estatus_solicitudes es
@@ -163,30 +107,16 @@ export async function obtenerSolicitudContactoPorId(
     return null;
   }
 
-  const respuestas = await listarRespuestasSolicitud(id);
-
   return {
     ...mapearSolicitud(solicitud),
-    respuestas,
-  };
-}
-
-function mapearRespuesta(
-  fila: RespuestaSolicitudContactoRow
-): RespuestaSolicitudContacto {
-  return {
-    id: fila.id,
-    detalles: fila.detalles,
-    fechaAtencion: fila.fecha_atencion.toISOString(),
-    usuarioId: fila.usuario_id,
-    nombreUsuario: fila.nombre_usuario,
+    respuestas: await listarRespuestasSolicitud(id),
   };
 }
 
 export async function listarRespuestasSolicitud(
   solicitudId: string
 ): Promise<RespuestaSolicitudContacto[]> {
-  const resultado = await pool.query<RespuestaSolicitudContactoRow>(
+  const resultado = await pool.query<FilaRespuestaSolicitudContacto>(
     `SELECT
        a.id,
        a.detalles,
@@ -208,7 +138,11 @@ export async function guardarRespuestaSolicitudContacto(
   usuarioId: string,
   respuesta: string
 ): Promise<
-  | { resultado: "guardada"; respuesta: RespuestaSolicitudContacto }
+  | {
+      resultado: "guardada";
+      respuesta: RespuestaSolicitudContacto;
+      destinatario: DestinatarioRespuestaSolicitud;
+    }
   | { resultado: "no_existe" | "cerrada" }
 > {
   const cliente = await pool.connect();
@@ -216,30 +150,38 @@ export async function guardarRespuestaSolicitudContacto(
   try {
     await cliente.query("BEGIN");
 
-    const solicitud = await cliente.query<{ estatus: string }>(
-      `SELECT es.estatus
+    const consultaSolicitud = await cliente.query<{
+      estatus: string;
+      nombre: string;
+      correo: string;
+    }>(
+      `SELECT es.estatus, sc.nombre, sc.correo
        FROM contacto.solicitudes_contacto sc
-       INNER JOIN contacto.estatus_solicitudes es ON es.id = sc.estatus_id
+       INNER JOIN contacto.estatus_solicitudes es
+         ON es.id = sc.estatus_id
+       INNER JOIN contacto.origenes o
+         ON o.id = sc.origen_id
        WHERE sc.id = $1
+         AND LOWER(o.origen) LIKE 'formulario%'
        FOR UPDATE OF sc`,
       [solicitudId]
     );
-    const estatus = solicitud.rows[0]?.estatus;
+    const solicitud = consultaSolicitud.rows[0];
 
-    if (!estatus) {
+    if (!solicitud) {
       await cliente.query("ROLLBACK");
       return { resultado: "no_existe" };
     }
 
     if (
-      estatus.toLowerCase() !== "nueva" &&
-      !estatus.toLowerCase().startsWith("en atenci")
+      solicitud.estatus.toLowerCase() !== "nueva" &&
+      !solicitud.estatus.toLowerCase().startsWith("en atenci")
     ) {
       await cliente.query("ROLLBACK");
       return { resultado: "cerrada" };
     }
 
-    const guardada = await cliente.query<RespuestaSolicitudContactoRow>(
+    const guardada = await cliente.query<FilaRespuestaSolicitudContacto>(
       `WITH respuesta AS (
          INSERT INTO contacto.atenciones
            (usuario_id, solicitud_id, detalles)
@@ -274,7 +216,69 @@ export async function guardarRespuestaSolicitudContacto(
     return {
       resultado: "guardada",
       respuesta: mapearRespuesta(guardada.rows[0]),
+      destinatario: {
+        solicitudId,
+        nombre: solicitud.nombre,
+        correo: solicitud.correo,
+      },
     };
+  } catch (error) {
+    await cliente.query("ROLLBACK");
+    throw error;
+  } finally {
+    cliente.release();
+  }
+}
+
+export async function cerrarSolicitudContacto(
+  solicitudId: string
+): Promise<"cerrada" | "no_existe" | "ya_cerrada"> {
+  const cliente = await pool.connect();
+
+  try {
+    await cliente.query("BEGIN");
+
+    const resultado = await cliente.query<{ estatus: string }>(
+      `SELECT es.estatus
+       FROM contacto.solicitudes_contacto sc
+       INNER JOIN contacto.estatus_solicitudes es
+         ON es.id = sc.estatus_id
+       INNER JOIN contacto.origenes o
+         ON o.id = sc.origen_id
+       WHERE sc.id = $1
+         AND LOWER(o.origen) LIKE 'formulario%'
+       FOR UPDATE OF sc`,
+      [solicitudId]
+    );
+    const estatus = resultado.rows[0]?.estatus;
+
+    if (!estatus) {
+      await cliente.query("ROLLBACK");
+      return "no_existe";
+    }
+
+    if (
+      estatus.toLowerCase() !== "nueva" &&
+      !estatus.toLowerCase().startsWith("en atenci")
+    ) {
+      await cliente.query("ROLLBACK");
+      return "ya_cerrada";
+    }
+
+    await cliente.query(
+      `UPDATE contacto.solicitudes_contacto
+       SET estatus_id = (
+         SELECT id
+         FROM contacto.estatus_solicitudes
+         WHERE LOWER(estatus) = 'atendida'
+         LIMIT 1
+       )
+       WHERE id = $1`,
+      [solicitudId]
+    );
+
+    await cliente.query("COMMIT");
+    return "cerrada";
   } catch (error) {
     await cliente.query("ROLLBACK");
     throw error;

@@ -1,25 +1,3 @@
-export interface ContactoRequest {
-  nombre: string;
-  correo: string;
-  telefono?: string;
-  rfc?: string;
-  mensaje: string;
-  captchaToken: string;
-}
-
-export interface ContactoDatosLimpios {
-  nombre: string;
-  correo: string;
-  telefono: string | null;
-  rfc: string | null;
-  mensaje: string;
-}
-
-export interface SolicitudContactoCreada {
-  id: string;
-  fecha_registro: Date;
-}
-
 export type EstadoAtencionSolicitud =
   | "por_atender"
   | "en_atencion"
@@ -52,7 +30,7 @@ export interface SolicitudContactoDetalle
   respuestas: RespuestaSolicitudContacto[];
 }
 
-export interface SolicitudContactoRow {
+export interface FilaSolicitudContacto {
   id: string;
   nombre: string;
   correo: string;
@@ -64,7 +42,7 @@ export interface SolicitudContactoRow {
   fecha_registro: Date;
 }
 
-export interface RespuestaSolicitudContactoRow {
+export interface FilaRespuestaSolicitudContacto {
   id: string;
   detalles: string;
   fecha_atencion: Date;
@@ -72,19 +50,17 @@ export interface RespuestaSolicitudContactoRow {
   nombre_usuario: string;
 }
 
-export interface GuardarRespuestaContactoRequest {
+export interface PeticionGuardarRespuesta {
   respuesta?: unknown;
 }
 
-export interface EnvioSolicitudContactoPendiente {
-  envio_id: string;
-  intentos: number;
-  correo_destinatario: string;
-  solicitud_contacto_id: string;
+export interface DestinatarioRespuestaSolicitud {
+  solicitudId: string;
   nombre: string;
   correo: string;
-  telefono: string | null;
-  rfc: string | null;
-  mensaje: string | null;
-  fecha_registro: Date;
+}
+
+export interface ResultadoGuardarRespuesta {
+  respuesta: RespuestaSolicitudContacto;
+  correoEnviado: boolean;
 }

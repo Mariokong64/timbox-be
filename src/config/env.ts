@@ -33,6 +33,11 @@ function obtenerNumeroPositivo(
     : valorPredeterminado;
 }
 
+const tamanoMaximoFotoPerfilMb = obtenerNumeroPositivo(
+  "FOTO_PERFIL_TAMANO_MAXIMO_MB",
+  5
+);
+
 export const env = {
   port: Number(process.env.PORT ?? 3000),
   frontendUrl: process.env.FRONTEND_URL ?? "",
@@ -56,16 +61,16 @@ export const env = {
       process.env.CHAT_PERSONA_TOKEN_EXPIRATION_DAYS ?? 30
     ),
   },
+  perfil: {
+    rutaFotos: process.env.FOTOS_PERFIL_RUTA?.trim() || "FOTOS_PERFIL",
+    tamanoMaximoFotoMb: tamanoMaximoFotoPerfilMb,
+    tamanoMaximoFotoBytes: tamanoMaximoFotoPerfilMb * 1024 * 1024,
+  },
   correo: {
     habilitado: obtenerBooleano("CORREO_HABILITADO", false),
-    cronReintentos: process.env.CORREO_REINTENTOS_CRON ?? "0 1-5 * * *",
-    zonaHoraria:
-      process.env.CORREO_REINTENTOS_ZONA_HORARIA ?? "America/Mexico_City",
-    tamanoLote: obtenerNumeroPositivo("CORREO_TAMANO_LOTE", 10),
-    maxIntentos: obtenerNumeroPositivo("CORREO_MAX_INTENTOS", 6),
-    bloqueoExpiradoMs: obtenerNumeroPositivo(
-      "CORREO_BLOQUEO_EXPIRADO_MS",
-      300000
+    remitenteRespuestas: obtenerVariable(
+      "CORREO_RESPUESTAS_REMITENTE",
+      false
     ),
     smtp: {
       host: obtenerVariable("SMTP_HOST", false),
@@ -74,7 +79,6 @@ export const env = {
       requireTls: obtenerBooleano("SMTP_REQUIRE_TLS", true),
       user: obtenerVariable("SMTP_USER", false),
       password: obtenerVariable("SMTP_PASSWORD", false),
-      from: obtenerVariable("SMTP_FROM", false),
       maxConnections: obtenerNumeroPositivo("SMTP_MAX_CONNECTIONS", 2),
     },
   },
