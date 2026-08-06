@@ -1,9 +1,5 @@
 BEGIN;
 
--- Sustituye el catálogo de estatus por una bandera simple en ambos recursos.
-ALTER TABLE contenidos.contenidos
-  ADD COLUMN IF NOT EXISTS activo BOOLEAN NOT NULL DEFAULT TRUE;
-
 ALTER TABLE contenidos.enlaces_url
   ADD COLUMN IF NOT EXISTS activo BOOLEAN NOT NULL DEFAULT TRUE;
 
@@ -31,15 +27,10 @@ ALTER TABLE contenidos.enlaces_url
 
 DROP TABLE IF EXISTS contenidos.estatus_enlaces;
 
-CREATE INDEX IF NOT EXISTS ix_contenidos_seccion_activo
-  ON contenidos.contenidos (seccion_id, activo);
-
 CREATE INDEX IF NOT EXISTS ix_enlaces_url_seccion_activo
   ON contenidos.enlaces_url (seccion_id, activo);
 
 INSERT INTO contenidos.secciones (seccion, descripcion) VALUES
-  ('Empresa', 'Textos administrables de la sección Empresa del sitio público.'),
-  ('Soluciones', 'Textos administrables de la sección Soluciones del sitio público.'),
   ('General', 'Enlaces generales reutilizados en distintas secciones del sitio público.'),
   ('Integradores', 'Repositorios y recursos de integración publicados en el sitio.')
 ON CONFLICT (seccion) DO UPDATE
@@ -50,8 +41,11 @@ INSERT INTO contenidos.enlaces_url (clave, url, seccion_id, activo)
 SELECT datos.clave, datos.url, seccion.id, TRUE
 FROM (
   VALUES
-    ('general.dashboard_registro', 'http://grupotum.com:9020/registro'),
-    ('general.dashboard_acceso', 'http://grupotum.com:9020/acceso')
+    ('aplicacion_gratuita', 'https://appgratis.timbox.com.mx/acceso'),
+    ('timbox_dashboard_registro', 'http://grupotum.com:9020/registro'),
+    ('timbox_dashboard_acceso', 'http://grupotum.com:9020/acceso'),
+    ('timbox_linkedin', 'https://www.linkedin.com/company/timbox/'),
+    ('timbox_facebook', 'https://www.facebook.com/TimboxPAC/')
 ) AS datos(clave, url)
 CROSS JOIN contenidos.secciones AS seccion
 WHERE LOWER(seccion.seccion) = 'general'

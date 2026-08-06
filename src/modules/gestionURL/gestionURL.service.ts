@@ -1,21 +1,16 @@
 import {
   actualizarEnlace,
-  crearEnlace,
-  eliminarEnlace,
-  obtenerEnlacePorId,
   obtenerEnlaces,
-  obtenerSeccionURLPorId,
   obtenerSeccionesURL,
 } from "./gestionURL.repository";
 import {
-  DatosEnlace,
+  DatosEdicionEnlace,
+  EdicionEnlaceRequest,
   EnlaceAdministrable,
-  EnlaceRequest,
   SeccionURL,
 } from "./gestionURL.types";
 
 const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const claveRegex = /^[a-z0-9][a-z0-9._-]*$/;
 
 export class ErrorGestionURL extends Error {
   constructor(message: string, public readonly statusCode = 400) {
@@ -57,26 +52,14 @@ function validarURL(valor: unknown): string {
   return url;
 }
 
-async function validarDatos(datos: EnlaceRequest): Promise<DatosEnlace> {
-  const clave = texto(datos.clave).toLowerCase();
+function validarEdicion(datos: EdicionEnlaceRequest): DatosEdicionEnlace {
   const url = validarURL(datos.url);
-  const seccionId = validarUuid(datos.seccionId, "La sección");
-
-  if (!clave || clave.length > 100 || !claveRegex.test(clave)) {
-    throw new ErrorGestionURL(
-      "La clave debe tener máximo 100 caracteres y usar únicamente letras minúsculas, números, punto, guion o guion bajo."
-    );
-  }
 
   if (typeof datos.activo !== "boolean") {
     throw new ErrorGestionURL("Indica si el enlace está activo.");
   }
 
-  if (!(await obtenerSeccionURLPorId(seccionId))) {
-    throw new ErrorGestionURL("La sección debe ser General o Integradores.");
-  }
-
-  return { clave, url, seccionId, activo: datos.activo };
+  return { url, activo: datos.activo };
 }
 
 export async function listarSeccionesURLService(): Promise<SeccionURL[]> {
@@ -96,30 +79,16 @@ export async function listarEnlacesService(
   return obtenerEnlaces(seccionId || null, texto(busquedaValor).slice(0, 200));
 }
 
-export async function crearEnlaceService(datos: EnlaceRequest): Promise<EnlaceAdministrable> {
-  return crearEnlace(await validarDatos(datos));
-}
-
 export async function actualizarEnlaceService(
   idValor: unknown,
-  datos: EnlaceRequest
+  datos: EdicionEnlaceRequest
 ): Promise<EnlaceAdministrable> {
   const id = validarUuid(idValor, "El enlace");
-  const actualizado = await actualizarEnlace(id, await validarDatos(datos));
+  const actualizado = await actualizarEnlace(id, validarEdicion(datos));
 
   if (!actualizado) {
     throw new ErrorGestionURL("No se encontró el enlace.", 404);
   }
 
   return actualizado;
-}
-
-export async function eliminarEnlaceService(idValor: unknown): Promise<void> {
-  const id = validarUuid(idValor, "El enlace");
-
-  if (!(await obtenerEnlacePorId(id))) {
-    throw new ErrorGestionURL("No se encontró el enlace.", 404);
-  }
-
-  await eliminarEnlace(id);
 }

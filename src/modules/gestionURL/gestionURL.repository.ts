@@ -1,6 +1,6 @@
 import { pool } from "../../config/database";
 import {
-  DatosEnlace,
+  DatosEdicionEnlace,
   EnlaceAdministrable,
   EnlaceRow,
   SeccionURL,
@@ -47,23 +47,6 @@ export async function obtenerSeccionesURL(): Promise<SeccionURL[]> {
   }));
 }
 
-export async function obtenerSeccionURLPorId(id: string): Promise<SeccionURL | null> {
-  const resultado = await pool.query<{
-    id: string;
-    seccion: string;
-    descripcion: string | null;
-  }>(
-    `SELECT id, seccion, descripcion
-     FROM contenidos.secciones
-     WHERE id = $1 AND LOWER(seccion) IN ('general', 'integradores')
-     LIMIT 1`,
-    [id]
-  );
-  const row = resultado.rows[0];
-
-  return row ? { id: row.id, nombre: row.seccion, descripcion: row.descripcion } : null;
-}
-
 export async function obtenerEnlaces(
   seccionId: string | null,
   busqueda: string
@@ -80,46 +63,15 @@ export async function obtenerEnlaces(
   return resultado.rows.map(mapearEnlace);
 }
 
-export async function obtenerEnlacePorId(id: string): Promise<EnlaceAdministrable | null> {
-  const resultado = await pool.query<EnlaceRow>(
-    `${seleccionEnlace}
-     WHERE e.id = $1 AND LOWER(s.seccion) IN ('general', 'integradores')
-     LIMIT 1`,
-    [id]
-  );
-  const row = resultado.rows[0];
-
-  return row ? mapearEnlace(row) : null;
-}
-
-export async function crearEnlace(datos: DatosEnlace): Promise<EnlaceAdministrable> {
-  const resultado = await pool.query<EnlaceRow>(
-    `WITH nuevo AS (
-       INSERT INTO contenidos.enlaces_url (clave, url, seccion_id, activo)
-       VALUES ($1, $2, $3, $4)
-       RETURNING *
-     )
-     SELECT n.id, n.clave, n.url, n.activo, n.fecha_actualizacion,
-            s.id AS seccion_id, s.seccion, s.descripcion AS seccion_descripcion
-     FROM nuevo n
-     INNER JOIN contenidos.secciones s ON s.id = n.seccion_id`,
-    [datos.clave, datos.url, datos.seccionId, datos.activo]
-  );
-
-  return mapearEnlace(resultado.rows[0]);
-}
-
 export async function actualizarEnlace(
   id: string,
-  datos: DatosEnlace
+  datos: DatosEdicionEnlace
 ): Promise<EnlaceAdministrable | null> {
   const resultado = await pool.query<EnlaceRow>(
     `WITH actualizado AS (
        UPDATE contenidos.enlaces_url
-       SET clave = $2,
-           url = $3,
-           seccion_id = $4,
-           activo = $5,
+       SET url = $2,
+           activo = $3,
            fecha_actualizacion = CURRENT_TIMESTAMP
        WHERE id = $1
        RETURNING *
@@ -128,15 +80,9 @@ export async function actualizarEnlace(
             s.id AS seccion_id, s.seccion, s.descripcion AS seccion_descripcion
      FROM actualizado a
      INNER JOIN contenidos.secciones s ON s.id = a.seccion_id`,
-    [id, datos.clave, datos.url, datos.seccionId, datos.activo]
+    [id, datos.url, datos.activo]
   );
   const row = resultado.rows[0];
 
   return row ? mapearEnlace(row) : null;
-}
-
-export async function eliminarEnlace(id: string): Promise<boolean> {
-  const resultado = await pool.query("DELETE FROM contenidos.enlaces_url WHERE id = $1", [id]);
-
-  return (resultado.rowCount ?? 0) > 0;
 }

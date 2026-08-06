@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import { mkdir, readFile, rename, rm, writeFile } from "fs/promises";
 import path from "path";
 import { env } from "../../config/env";
+import { validarSeguridadContrasena } from "../../shared/validaciones/contrasena";
 import {
   actualizarContrasenaPerfil,
   actualizarNombreFotoPerfil,
@@ -129,12 +130,13 @@ export async function cambiarContrasena(
     throw new ErrorPerfil("Completa todos los campos de contraseña.");
   }
 
-  if (contrasenaNueva.length < 8) {
-    throw new ErrorPerfil("La nueva contraseña debe tener al menos 8 caracteres.");
-  }
+  const errorSeguridad = validarSeguridadContrasena(
+    contrasenaNueva,
+    "La nueva contraseña"
+  );
 
-  if (contrasenaNueva.length > 150) {
-    throw new ErrorPerfil("La nueva contraseña no debe superar 150 caracteres.");
+  if (errorSeguridad) {
+    throw new ErrorPerfil(errorSeguridad);
   }
 
   if (contrasenaNueva !== confirmacionContrasena) {

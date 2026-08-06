@@ -2,8 +2,6 @@ import { Response } from "express";
 import { AuthRequest } from "../../middlewares/auth.middleware";
 import {
   actualizarEnlaceService,
-  crearEnlaceService,
-  eliminarEnlaceService,
   ErrorGestionURL,
   listarEnlacesService,
   listarSeccionesURLService,
@@ -16,12 +14,6 @@ function parametro(valor: unknown): string {
 function manejarError(error: unknown, res: Response) {
   if (error instanceof ErrorGestionURL) {
     return res.status(error.statusCode).json({ ok: false, message: error.message });
-  }
-
-  if (typeof error === "object" && error !== null && "code" in error) {
-    if ((error as { code?: string }).code === "23505") {
-      return res.status(409).json({ ok: false, message: "Ya existe un enlace con esa clave." });
-    }
   }
 
   console.error("Error en gestión de URL.", error);
@@ -45,28 +37,10 @@ export async function listarEnlacesController(req: AuthRequest, res: Response) {
   }
 }
 
-export async function crearEnlaceController(req: AuthRequest, res: Response) {
-  try {
-    const data = await crearEnlaceService(req.body);
-    return res.status(201).json({ ok: true, message: "Enlace creado correctamente.", data });
-  } catch (error) {
-    return manejarError(error, res);
-  }
-}
-
 export async function actualizarEnlaceController(req: AuthRequest, res: Response) {
   try {
     const data = await actualizarEnlaceService(parametro(req.params.id), req.body);
     return res.status(200).json({ ok: true, message: "Enlace actualizado correctamente.", data });
-  } catch (error) {
-    return manejarError(error, res);
-  }
-}
-
-export async function eliminarEnlaceController(req: AuthRequest, res: Response) {
-  try {
-    await eliminarEnlaceService(parametro(req.params.id));
-    return res.status(200).json({ ok: true, message: "Enlace eliminado correctamente." });
   } catch (error) {
     return manejarError(error, res);
   }

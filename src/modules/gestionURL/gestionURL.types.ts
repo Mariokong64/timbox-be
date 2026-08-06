@@ -24,16 +24,12 @@ export interface EnlaceRow {
   seccion_descripcion: string | null;
 }
 
-export interface EnlaceRequest {
-  clave?: unknown;
+export interface EdicionEnlaceRequest {
   url?: unknown;
-  seccionId?: unknown;
   activo?: unknown;
 }
 
-export interface DatosEnlace {
-  clave: string;
+export interface DatosEdicionEnlace {
   url: string;
-  seccionId: string;
   activo: boolean;
 }

@@ -20,21 +20,6 @@ CREATE TABLE contenidos.secciones (
     descripcion TEXT
 );
 
-CREATE TABLE contenidos.contenidos (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    clave VARCHAR(100) NOT NULL UNIQUE,
-    contenido TEXT NOT NULL,
-    seccion_id UUID NOT NULL,
-    fecha_actualizacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    activo BOOLEAN NOT NULL DEFAULT TRUE,
-
-    CONSTRAINT fk_contenidos_seccion
-        FOREIGN KEY (seccion_id)
-        REFERENCES contenidos.secciones(id)
-        ON UPDATE CASCADE
-        ON DELETE RESTRICT
-);
-
 CREATE TABLE contenidos.enlaces_url (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     clave VARCHAR(100) NOT NULL UNIQUE,
@@ -49,9 +34,6 @@ CREATE TABLE contenidos.enlaces_url (
         ON UPDATE CASCADE
         ON DELETE RESTRICT
 );
-
-CREATE INDEX ix_contenidos_seccion_activo
-    ON contenidos.contenidos (seccion_id, activo);
 
 CREATE INDEX ix_enlaces_url_seccion_activo
     ON contenidos.enlaces_url (seccion_id, activo);
@@ -339,8 +321,11 @@ INSERT INTO contenidos.enlaces_url (clave, url, seccion_id, activo)
 SELECT datos.clave, datos.url, seccion.id, TRUE
 FROM (
   VALUES
-    ('general.dashboard_registro', 'http://grupotum.com:9020/registro'),
-    ('general.dashboard_acceso', 'http://grupotum.com:9020/acceso')
+    ('aplicacion_gratuita', 'https://appgratis.timbox.com.mx/acceso'),
+    ('timbox_dashboard_registro', 'http://grupotum.com:9020/registro'),
+    ('timbox_dashboard_acceso', 'http://grupotum.com:9020/acceso'),
+    ('timbox_linkedin', 'https://www.linkedin.com/company/timbox/'),
+    ('timbox_facebook', 'https://www.facebook.com/TimboxPAC/')
 ) AS datos(clave, url)
 CROSS JOIN contenidos.secciones AS seccion
 WHERE LOWER(seccion.seccion) = 'general';

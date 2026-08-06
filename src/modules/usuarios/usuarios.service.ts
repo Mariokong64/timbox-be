@@ -1,5 +1,6 @@
 import bcrypt from "bcrypt";
 import { eliminarArchivoFotoPerfil } from "../perfil/perfil.servicio";
+import { validarSeguridadContrasena } from "../../shared/validaciones/contrasena";
 import {
   actualizarUsuario,
   crearUsuario,
@@ -78,12 +79,10 @@ function validarContrasena(valor: unknown, requerida: boolean): string {
     return "";
   }
 
-  if (contrasena.length < 8) {
-    throw new ErrorUsuarios("La contraseña debe tener al menos 8 caracteres.");
-  }
+  const errorSeguridad = validarSeguridadContrasena(contrasena);
 
-  if (contrasena.length > 150) {
-    throw new ErrorUsuarios("La contraseña no debe superar 150 caracteres.");
+  if (errorSeguridad) {
+    throw new ErrorUsuarios(errorSeguridad);
   }
 
   return contrasena;
