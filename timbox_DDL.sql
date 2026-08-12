@@ -229,6 +229,31 @@ CREATE INDEX IF NOT EXISTS ix_solicitudes_contacto_conversacion
     (conversacion_id ASC NULLS LAST)
     TABLESPACE pg_default;
 
+CREATE TABLE IF NOT EXISTS contacto.atenciones
+(
+    id uuid NOT NULL DEFAULT gen_random_uuid(),
+    usuario_id uuid NOT NULL,
+    solicitud_id uuid NOT NULL,
+    detalles text COLLATE pg_catalog."default",
+    fecha_atencion timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT atenciones_pkey PRIMARY KEY (id),
+    CONSTRAINT fk_atenciones_solicitud FOREIGN KEY (solicitud_id)
+        REFERENCES contacto.solicitudes_contacto (id) MATCH SIMPLE
+        ON UPDATE CASCADE
+        ON DELETE CASCADE,
+    CONSTRAINT fk_atenciones_usuario FOREIGN KEY (usuario_id)
+        REFERENCES sys.usuarios (id) MATCH SIMPLE
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT
+)
+
+CREATE INDEX IF NOT EXISTS ix_atenciones_solicitud_fecha
+    ON contacto.atenciones USING btree
+    (solicitud_id ASC NULLS LAST, fecha_atencion ASC NULLS LAST)
+    TABLESPACE pg_default;
+
+-- Estas tablas son para una funcionalidad que el cliente no determina si se agrega o no
+
 CREATE TABLE IF NOT EXISTS contacto.destinatarios_notificacion
 (
     id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -305,29 +330,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS ux_envios_solicitudes_contacto_destinatario
     (solicitud_contacto_id ASC NULLS LAST, lower(correo_destinatario) COLLATE pg_catalog."default" ASC NULLS LAST)
     TABLESPACE pg_default;
 
-
-CREATE TABLE IF NOT EXISTS contacto.atenciones
-(
-    id uuid NOT NULL DEFAULT gen_random_uuid(),
-    usuario_id uuid NOT NULL,
-    solicitud_id uuid NOT NULL,
-    detalles text COLLATE pg_catalog."default",
-    fecha_atencion timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT atenciones_pkey PRIMARY KEY (id),
-    CONSTRAINT fk_atenciones_solicitud FOREIGN KEY (solicitud_id)
-        REFERENCES contacto.solicitudes_contacto (id) MATCH SIMPLE
-        ON UPDATE CASCADE
-        ON DELETE CASCADE,
-    CONSTRAINT fk_atenciones_usuario FOREIGN KEY (usuario_id)
-        REFERENCES sys.usuarios (id) MATCH SIMPLE
-        ON UPDATE CASCADE
-        ON DELETE RESTRICT
-)
-
-CREATE INDEX IF NOT EXISTS ix_atenciones_solicitud_fecha
-    ON contacto.atenciones USING btree
-    (solicitud_id ASC NULLS LAST, fecha_atencion ASC NULLS LAST)
-    TABLESPACE pg_default;
+-- Fin de las tablas que son para una funcionalidad que el cliente no determina si se agrega o no
 
 -- =========================
 -- CFDI / VALIDACIONES
