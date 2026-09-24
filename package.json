@@ -7,6 +7,8 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "hash:contrasena": "tsx src/scripts/generarHashContrasena.ts",
     "verificar:contrasena": "tsx src/scripts/verificarContrasena.ts"
   },
@@ -34,7 +36,9 @@
     "@types/node": "^25.6.2",
     "@types/nodemailer": "^8.0.1",
     "@types/pg": "^8.20.0",
+    "@vitest/coverage-v8": "^4.0.0",
     "tsx": "^4.21.0",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "vitest": "^4.0.0"
   }
 }
