@@ -25,6 +25,27 @@ export interface UsuarioRequest {
   nombre?: string;
   correo?: string;
   contrasena?: string;
+  permisos?: PermisoPantalla[];
+}
+
+export interface PermisoPantalla {
+  pantallaId: string;
+  clave: string;
+  nombre: string;
+  leer: boolean;
+  crear: boolean;
+  editar: boolean;
+  eliminar: boolean;
+}
+
+export interface PermisoPantallaRow {
+  pantalla_id: string;
+  clave: string;
+  nombre: string;
+  leer: boolean;
+  crear: boolean;
+  editar: boolean;
+  eliminar: boolean;
 }
 
 export interface UsuarioDatosCreacion {
@@ -42,4 +63,5 @@ export interface UsuarioDatosActualizacion {
   correo: string;
   contrasenaHash: string | null;
   modificadoPorId: string | null;
+  permisos: PermisoPantalla[];
 }

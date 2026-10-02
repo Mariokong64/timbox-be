@@ -2,7 +2,8 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { env } from "../../config/env";
 import { verificarCaptcha } from "../../shared/services/recaptcha.service";
-import { buscarUsuarioPorIdentificador } from "./auth.repository";
+import { buscarUsuarioPorIdentificador, restablecerCierreSesion } from "./auth.repository";
+import { obtenerPermisosUsuario } from "../usuarios/usuarios.repository";
 import { LoginRequest, LoginResponse, UsuarioAuth, UsuarioSesion } from "./auth.types";
 
 export class ErrorLogin extends Error {
@@ -64,9 +65,12 @@ export async function loginService(data: LoginRequest): Promise<LoginResponse> {
   const token = jwt.sign(usuarioSesion, env.jwtSecret, {
     expiresIn: "8h",
   });
+  await restablecerCierreSesion(usuarioEncontrado.id);
+  const permisos = await obtenerPermisosUsuario(usuarioEncontrado.id);
 
   return {
     token,
     usuario: usuarioSesion,
+    permisos,
   };
 }

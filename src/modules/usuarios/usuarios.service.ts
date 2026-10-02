@@ -8,8 +8,9 @@ import {
   existeUsuarioPorNombre,
   obtenerUsuarioPorId,
   obtenerUsuarios,
+  obtenerPermisosUsuario,
 } from "./usuarios.repository";
-import { Usuario, UsuarioRequest } from "./usuarios.types";
+import { PermisoPantalla, Usuario, UsuarioRequest } from "./usuarios.types";
 
 const RONDAS_BCRYPT = 10;
 const correoRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -92,6 +93,48 @@ export async function listarUsuariosService(): Promise<Usuario[]> {
   return obtenerUsuarios();
 }
 
+export async function obtenerPermisosUsuarioService(id: string): Promise<PermisoPantalla[]> {
+  const usuario = await obtenerUsuarioPorId(id);
+  if (!usuario) {
+    throw new ErrorUsuarios("No se encontró el usuario.", 404);
+  }
+  return obtenerPermisosUsuario(id);
+}
+
+function validarPermisos(valor: unknown, pantallas: PermisoPantalla[]): PermisoPantalla[] {
+  if (!Array.isArray(valor) || valor.length !== pantallas.length) {
+    throw new ErrorUsuarios("Debes enviar los permisos de todas las pantallas.");
+  }
+
+  const enviados = new Map<string, Record<string, unknown>>();
+  for (const permiso of valor) {
+    if (typeof permiso !== "object" || permiso === null || typeof permiso.pantallaId !== "string") {
+      throw new ErrorUsuarios("Los permisos enviados no son válidos.");
+    }
+    if (enviados.has(permiso.pantallaId)) {
+      throw new ErrorUsuarios("Hay una pantalla repetida en los permisos.");
+    }
+    enviados.set(permiso.pantallaId, permiso);
+  }
+
+  return pantallas.map((pantalla) => {
+    const permiso = enviados.get(pantalla.pantallaId);
+    if (!permiso || ["leer", "crear", "editar", "eliminar"].some((campo) => typeof permiso[campo] !== "boolean")) {
+      throw new ErrorUsuarios("Los permisos enviados no son válidos.");
+    }
+    if (!permiso.leer && (permiso.crear || permiso.editar || permiso.eliminar)) {
+      throw new ErrorUsuarios("Para crear, editar o eliminar también debes permitir la lectura.");
+    }
+    return {
+      ...pantalla,
+      leer: permiso.leer as boolean,
+      crear: permiso.crear as boolean,
+      editar: permiso.editar as boolean,
+      eliminar: permiso.eliminar as boolean,
+    };
+  });
+}
+
 export async function verificarDisponibilidadUsuarioService(usuarioValor: unknown, excluirId: string | null) {
   const usuario = normalizarUsuario(usuarioValor);
 
@@ -140,11 +183,14 @@ export async function actualizarUsuarioService(
   const contrasena = validarContrasena(datos.contrasena, false);
   await asegurarUsuarioDisponible(datosBase.usuario, id);
   const contrasenaHash = contrasena ? await bcrypt.hash(contrasena, RONDAS_BCRYPT) : null;
+  const pantallas = await obtenerPermisosUsuarioService(id);
+  const permisos = datos.permisos === undefined ? pantallas : validarPermisos(datos.permisos, pantallas);
   const usuario = await actualizarUsuario({
     id,
     ...datosBase,
     contrasenaHash,
     modificadoPorId,
+    permisos,
   });
 
   if (!usuario) {

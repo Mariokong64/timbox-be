@@ -4,7 +4,17 @@ import {
   UsuarioDatosActualizacion,
   UsuarioDatosCreacion,
   UsuarioRow,
+  PermisoPantalla,
+  PermisoPantallaRow,
 } from "./usuarios.types";
+
+interface PermisoActualRow {
+  pantalla_id: string;
+  leer: boolean;
+  crear: boolean;
+  editar: boolean;
+  eliminar: boolean;
+}
 
 function mapearUsuario(row: UsuarioRow): Usuario {
   return {
@@ -61,6 +71,7 @@ export async function existeUsuarioPorNombre(usuario: string, excluirId: string 
 }
 
 export async function crearUsuario(datos: UsuarioDatosCreacion): Promise<Usuario> {
+  const cliente = await pool.connect();
   const query = `
     INSERT INTO sys.usuarios (
       usuario,
@@ -73,18 +84,58 @@ export async function crearUsuario(datos: UsuarioDatosCreacion): Promise<Usuario
     RETURNING id, usuario, nombre, correo, foto_perfil, fecha_registro, creado, modificado
   `;
 
-  const result = await pool.query<UsuarioRow>(query, [
-    datos.usuario,
-    datos.nombre,
-    datos.correo,
-    datos.contrasenaHash,
-    datos.creadoPorId,
-  ]);
+  try {
+    await cliente.query("BEGIN");
+    const result = await cliente.query<UsuarioRow>(query, [
+      datos.usuario,
+      datos.nombre,
+      datos.correo,
+      datos.contrasenaHash,
+      datos.creadoPorId,
+    ]);
+    const usuario = mapearUsuario(result.rows[0]);
 
-  return mapearUsuario(result.rows[0]);
+    await cliente.query(
+      `INSERT INTO sys.pantallas_usuarios (usuario_id, pantalla_id)
+       SELECT $1, id FROM sys.pantallas`,
+      [usuario.id]
+    );
+    await cliente.query("COMMIT");
+    return usuario;
+  } catch (error) {
+    await cliente.query("ROLLBACK");
+    throw error;
+  } finally {
+    cliente.release();
+  }
+}
+
+export async function obtenerPermisosUsuario(usuarioId: string): Promise<PermisoPantalla[]> {
+  const result = await pool.query<PermisoPantallaRow>(`
+    SELECT p.id AS pantalla_id, p.clave, p.nombre,
+           COALESCE(pu.leer, false) AS leer,
+           COALESCE(pu.crear, false) AS crear,
+           COALESCE(pu.editar, false) AS editar,
+           COALESCE(pu.eliminar, false) AS eliminar
+    FROM sys.pantallas p
+    LEFT JOIN sys.pantallas_usuarios pu
+      ON pu.pantalla_id = p.id AND pu.usuario_id = $1
+    ORDER BY p.nombre ASC
+  `, [usuarioId]);
+
+  return result.rows.map((fila) => ({
+    pantallaId: fila.pantalla_id,
+    clave: fila.clave,
+    nombre: fila.nombre,
+    leer: fila.leer,
+    crear: fila.crear,
+    editar: fila.editar,
+    eliminar: fila.eliminar,
+  }));
 }
 
 export async function actualizarUsuario(datos: UsuarioDatosActualizacion): Promise<Usuario | null> {
+  const cliente = await pool.connect();
   const query = `
     UPDATE sys.usuarios
     SET usuario = $2,
@@ -97,17 +148,65 @@ export async function actualizarUsuario(datos: UsuarioDatosActualizacion): Promi
     RETURNING id, usuario, nombre, correo, foto_perfil, fecha_registro, creado, modificado
   `;
 
-  const result = await pool.query<UsuarioRow>(query, [
-    datos.id,
-    datos.usuario,
-    datos.nombre,
-    datos.correo,
-    datos.contrasenaHash,
-    datos.modificadoPorId,
-  ]);
-  const usuario = result.rows[0];
+  try {
+    await cliente.query("BEGIN");
+    const result = await cliente.query<UsuarioRow>(query, [
+      datos.id,
+      datos.usuario,
+      datos.nombre,
+      datos.correo,
+      datos.contrasenaHash,
+      datos.modificadoPorId,
+    ]);
+    const usuario = result.rows[0];
 
-  return usuario ? mapearUsuario(usuario) : null;
+    if (!usuario) {
+      await cliente.query("ROLLBACK");
+      return null;
+    }
+
+    const resultadoPermisos = await cliente.query<PermisoActualRow>(`
+      SELECT pantalla_id, leer, crear, editar, eliminar
+      FROM sys.pantallas_usuarios
+      WHERE usuario_id = $1
+    `, [datos.id]);
+    const permisosActuales = new Map(resultadoPermisos.rows.map((permiso) => [permiso.pantalla_id, permiso]));
+    const cambiaronPermisos = datos.permisos.some((permiso) => {
+      const anterior = permisosActuales.get(permiso.pantallaId);
+      return (anterior?.leer ?? false) !== permiso.leer
+        || (anterior?.crear ?? false) !== permiso.crear
+        || (anterior?.editar ?? false) !== permiso.editar
+        || (anterior?.eliminar ?? false) !== permiso.eliminar;
+    });
+
+    for (const permiso of datos.permisos) {
+      await cliente.query(`
+        INSERT INTO sys.pantallas_usuarios
+          (usuario_id, pantalla_id, leer, crear, editar, eliminar)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        ON CONFLICT (usuario_id, pantalla_id)
+        DO UPDATE SET leer = EXCLUDED.leer,
+                      crear = EXCLUDED.crear,
+                      editar = EXCLUDED.editar,
+                      eliminar = EXCLUDED.eliminar
+      `, [datos.id, permiso.pantallaId, permiso.leer, permiso.crear, permiso.editar, permiso.eliminar]);
+    }
+
+    if (cambiaronPermisos) {
+      await cliente.query(
+        "UPDATE sys.usuarios SET forzar_cierre_sesion = true WHERE id = $1",
+        [datos.id]
+      );
+    }
+
+    await cliente.query("COMMIT");
+    return mapearUsuario(usuario);
+  } catch (error) {
+    await cliente.query("ROLLBACK");
+    throw error;
+  } finally {
+    cliente.release();
+  }
 }
 
 export async function eliminarUsuario(id: string): Promise<boolean> {

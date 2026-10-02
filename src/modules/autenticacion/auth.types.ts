@@ -1,3 +1,5 @@
+import type { PermisoPantalla } from "../usuarios/usuarios.types";
+
 export interface LoginRequest {
   usuario: string;
   contrasena: string;
@@ -24,6 +26,7 @@ export interface UsuarioSesion {
 export interface LoginResponse {
   token: string;
   usuario: UsuarioSesion;
+  permisos: PermisoPantalla[];
 }
 
 export interface JwtPayload {

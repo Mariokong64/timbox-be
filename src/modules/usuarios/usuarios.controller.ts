@@ -6,6 +6,7 @@ import {
   eliminarUsuarioService,
   ErrorUsuarios,
   listarUsuariosService,
+  obtenerPermisosUsuarioService,
   verificarDisponibilidadUsuarioService,
 } from "./usuarios.service";
 
@@ -69,6 +70,15 @@ export async function verificarDisponibilidadUsuarioController(req: AuthRequest,
       ok: true,
       data: resultado,
     });
+  } catch (error) {
+    return manejarErrorUsuarios(error, res);
+  }
+}
+
+export async function obtenerPermisosUsuarioController(req: AuthRequest, res: Response) {
+  try {
+    const permisos = await obtenerPermisosUsuarioService(obtenerParametroTexto(req.params.id));
+    return res.status(200).json({ ok: true, data: permisos });
   } catch (error) {
     return manejarErrorUsuarios(error, res);
   }

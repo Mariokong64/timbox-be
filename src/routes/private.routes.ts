@@ -1,15 +1,19 @@
 import { Router, Response } from "express";
-import { authMiddleware, AuthRequest } from "../middlewares/auth.middleware";
+import { authMiddleware, cargarSesionPrivadaMiddleware, AuthRequest } from "../middlewares/auth.middleware";
 import dashboardRoutes from "../modules/dashboard/dashboard.routes";
 import usuariosRoutes from "../modules/usuarios/usuarios.routes";
 import chatPersonaRoutes from "../modules/chat/chatPersona/chatPersona.private.routes";
 import contactoRoutes from "../modules/contacto/sitioPrivado/solicitudes.rutas";
 import gestionURLRoutes from "../modules/gestionURL/gestionURL.routes";
 import perfilRoutes from "../modules/perfil/perfil.rutas";
+import { obtenerMisPermisosController } from "../modules/autenticacion/auth.controller";
 
 const router = Router();
 
 router.use(authMiddleware);
+router.use(cargarSesionPrivadaMiddleware);
+
+router.get("/mis-permisos", obtenerMisPermisosController);
 
 router.get("/prueba", (req: AuthRequest, res: Response) => {
   res.json({

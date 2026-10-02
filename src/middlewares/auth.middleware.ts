@@ -1,6 +1,9 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { env } from "../config/env";
+import { consultarCierreSesion } from "../modules/autenticacion/auth.repository";
+import { obtenerPermisosUsuario } from "../modules/usuarios/usuarios.repository";
+import type { PermisoPantalla } from "../modules/usuarios/usuarios.types";
 
 export interface JwtPayload {
   id: string;
@@ -12,6 +15,7 @@ export interface JwtPayload {
 
 export interface AuthRequest extends Request {
   usuario?: JwtPayload;
+  permisos?: PermisoPantalla[];
 }
 
 export const authMiddleware = (req: AuthRequest, res: Response, next: NextFunction): void => {
@@ -66,5 +70,31 @@ export const authMiddleware = (req: AuthRequest, res: Response, next: NextFuncti
       ok: false,
       message: "Token inválido",
     });
+  }
+};
+
+export const cargarSesionPrivadaMiddleware = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const usuarioId = req.usuario?.id;
+    if (!usuarioId) {
+      res.status(401).json({ ok: false, message: "Sesión no válida." });
+      return;
+    }
+
+    const forzarCierreSesion = await consultarCierreSesion(usuarioId);
+    if (forzarCierreSesion === null || forzarCierreSesion) {
+      res.status(401).json({ ok: false, message: "Debes iniciar sesión nuevamente." });
+      return;
+    }
+
+    req.permisos = await obtenerPermisosUsuario(usuarioId);
+    next();
+  } catch (error) {
+    console.error("Error al consultar la sesión del usuario.", error);
+    res.status(500).json({ ok: false, message: "No se pudo validar la sesión." });
   }
 };

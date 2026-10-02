@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS sys.usuarios
     modificado timestamp without time zone,
     modificado_por_id uuid,
     foto_perfil text COLLATE pg_catalog."default",
+    forzar_cierre_sesion boolean NOT NULL DEFAULT false,
     CONSTRAINT usuarios_pkey PRIMARY KEY (id),
     CONSTRAINT usuarios_correo_key UNIQUE (correo),
     CONSTRAINT usuarios_usuario_key UNIQUE (usuario),
@@ -38,7 +39,37 @@ CREATE TABLE IF NOT EXISTS sys.usuarios
         REFERENCES sys.usuarios (id) MATCH SIMPLE
         ON UPDATE CASCADE
         ON DELETE SET NULL
-)
+);
+
+CREATE TABLE IF NOT EXISTS sys.pantallas
+(
+    id uuid NOT NULL DEFAULT gen_random_uuid(),
+    clave text COLLATE pg_catalog."default" NOT NULL,
+    nombre text COLLATE pg_catalog."default" NOT NULL,
+    CONSTRAINT pantallas_pkey PRIMARY KEY (id),
+    CONSTRAINT cve_pantalla_unica UNIQUE (clave)
+);
+
+CREATE TABLE IF NOT EXISTS sys.pantallas_usuarios
+(
+    usuario_id uuid NOT NULL,
+    pantalla_id uuid NOT NULL,
+    leer boolean NOT NULL DEFAULT false,
+    crear boolean NOT NULL DEFAULT false,
+    editar boolean NOT NULL DEFAULT false,
+    eliminar boolean NOT NULL DEFAULT false,
+    CONSTRAINT pantallas_usuarios_pkey PRIMARY KEY (usuario_id, pantalla_id),
+    CONSTRAINT fk_pantallas_usuarios_usuario FOREIGN KEY (usuario_id)
+        REFERENCES sys.usuarios (id)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE,
+    CONSTRAINT fk_pantallas_usuarios_pantalla FOREIGN KEY (pantalla_id)
+        REFERENCES sys.pantallas (id)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE,
+    CONSTRAINT ck_pantallas_usuarios_lectura CHECK
+        (leer OR NOT (crear OR editar OR eliminar))
+);
 
 -- =========================
 -- CONTENIDOS
@@ -366,6 +397,19 @@ CREATE INDEX IF NOT EXISTS ix_validaciones_cfdi_resultado_fecha
     ON cfdi.validaciones_cfdi USING btree
     (resultado_id ASC NULLS LAST, fecha_validacion ASC NULLS LAST)
     TABLESPACE pg_default;
+
+
+-- =========================
+-- SEMILLAS SYS
+-- =========================
+
+INSERT INTO sys.pantallas (clave, nombre)
+VALUES
+    ('USUARIOS', 'Usuarios'),
+    ('SOLICITUDES', 'Atención de solicitudes de contacto'),
+    ('ENLACES', 'Gestión de enlaces'),
+    ('DASHBOARD', 'Dashboard')
+ON CONFLICT (clave) DO NOTHING;
 
 
 -- =========================

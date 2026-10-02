@@ -14,3 +14,20 @@ export async function buscarUsuarioPorIdentificador(identificador: string): Prom
 
   return result.rows[0] ?? null;
 }
+
+export async function consultarCierreSesion(usuarioId: string): Promise<boolean | null> {
+  const result = await pool.query<{ forzar_cierre_sesion: boolean }>(`
+    SELECT forzar_cierre_sesion
+    FROM sys.usuarios
+    WHERE id = $1
+  `, [usuarioId]);
+
+  return result.rows[0]?.forzar_cierre_sesion ?? null;
+}
+
+export async function restablecerCierreSesion(usuarioId: string): Promise<void> {
+  await pool.query(
+    "UPDATE sys.usuarios SET forzar_cierre_sesion = false WHERE id = $1",
+    [usuarioId]
+  );
+}
