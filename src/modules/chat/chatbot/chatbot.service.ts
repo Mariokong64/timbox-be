@@ -21,7 +21,7 @@ export async function responderMensajeChatbot(
     );
   }
 
-  const contexto = await obtenerContextoChatbot();
+  const contexto = await obtenerContextoChatbot(mensaje);
 
   return consultarOllama(mensaje, contexto);
 }

@@ -48,10 +48,19 @@ export const env = {
     model: process.env.OLLAMA_MODEL ?? "qwen3:4b-q4_K_M",
     timeoutMs: Number(process.env.OLLAMA_TIMEOUT_MS ?? 120000),
     keepAlive: process.env.OLLAMA_KEEP_ALIVE ?? "10m",
+    numCtx: obtenerNumeroPositivo("OLLAMA_NUM_CTX", 8192),
   },
   chatbot: {
     contextFile: obtenerVariable("CHATBOT_CONTEXT_FILE", false),
     maxMessageLength: Number(process.env.CHATBOT_MAX_MESSAGE_LENGTH ?? 1000),
+    contextMaxRecords: obtenerNumeroPositivo(
+      "CHATBOT_CONTEXT_MAX_RECORDS",
+      8
+    ),
+    contextMaxChars: obtenerNumeroPositivo(
+      "CHATBOT_CONTEXT_MAX_CHARS",
+      12000
+    ),
   },
   chatPersona: {
     maxMessageLength: Number(
