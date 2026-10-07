@@ -1,10 +1,10 @@
 import bcrypt from "bcrypt";
-import { eliminarArchivoFotoPerfil } from "../perfil/perfil.servicio";
 import { validarSeguridadContrasena } from "../../shared/validaciones/contrasena";
 import {
   actualizarUsuario,
   crearUsuario,
   eliminarUsuario,
+  existeUsuarioPorCorreo,
   existeUsuarioPorNombre,
   obtenerUsuarioPorId,
   obtenerUsuarios,
@@ -161,10 +161,19 @@ async function asegurarUsuarioDisponible(usuario: string, excluirId: string | nu
   }
 }
 
+async function asegurarCorreoDisponible(correo: string, excluirId: string | null) {
+  const existe = await existeUsuarioPorCorreo(correo, excluirId);
+
+  if (existe) {
+    throw new ErrorUsuarios("Ese correo ya existe.", 409);
+  }
+}
+
 export async function crearUsuarioService(datos: UsuarioRequest, creadoPorId: string | null): Promise<Usuario> {
   const datosBase = validarDatosBase(datos);
   const contrasena = validarContrasena(datos.contrasena, true);
   await asegurarUsuarioDisponible(datosBase.usuario, null);
+  await asegurarCorreoDisponible(datosBase.correo, null);
   const contrasenaHash = await bcrypt.hash(contrasena, RONDAS_BCRYPT);
 
   return crearUsuario({
@@ -182,6 +191,7 @@ export async function actualizarUsuarioService(
   const datosBase = validarDatosBase(datos);
   const contrasena = validarContrasena(datos.contrasena, false);
   await asegurarUsuarioDisponible(datosBase.usuario, id);
+  await asegurarCorreoDisponible(datosBase.correo, id);
   const contrasenaHash = contrasena ? await bcrypt.hash(contrasena, RONDAS_BCRYPT) : null;
   const pantallas = await obtenerPermisosUsuarioService(id);
   const permisos = datos.permisos === undefined ? pantallas : validarPermisos(datos.permisos, pantallas);
@@ -205,21 +215,9 @@ export async function eliminarUsuarioService(id: string, usuarioSesionId: string
     throw new ErrorUsuarios("No puedes eliminar tu propio usuario.", 400);
   }
 
-  const usuario = await obtenerUsuarioPorId(id);
-
-  if (!usuario) {
-    throw new ErrorUsuarios("No se encontró el usuario.", 404);
-  }
-
-  const eliminado = await eliminarUsuario(id);
+  const eliminado = await eliminarUsuario(id, usuarioSesionId);
 
   if (!eliminado) {
-    throw new ErrorUsuarios("No se pudo eliminar el usuario.", 400);
-  }
-
-  try {
-    await eliminarArchivoFotoPerfil(usuario.fotoPerfil);
-  } catch (error) {
-    console.error("El usuario fue eliminado, pero no se pudo borrar su fotografía.", error);
+    throw new ErrorUsuarios("No se encontró el usuario.", 404);
   }
 }

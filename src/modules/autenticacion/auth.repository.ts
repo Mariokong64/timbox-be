@@ -5,8 +5,9 @@ export async function buscarUsuarioPorIdentificador(identificador: string): Prom
   const query = `
     SELECT id, usuario, nombre, correo, contrasena, foto_perfil
     FROM sys.usuarios
-    WHERE LOWER(usuario) = LOWER($1)
-       OR LOWER(correo) = LOWER($1)
+    WHERE eliminado = false
+      AND (LOWER(usuario) = LOWER($1)
+        OR LOWER(correo) = LOWER($1))
     LIMIT 1
   `;
 
@@ -19,7 +20,7 @@ export async function consultarCierreSesion(usuarioId: string): Promise<boolean 
   const result = await pool.query<{ forzar_cierre_sesion: boolean }>(`
     SELECT forzar_cierre_sesion
     FROM sys.usuarios
-    WHERE id = $1
+    WHERE id = $1 AND eliminado = false
   `, [usuarioId]);
 
   return result.rows[0]?.forzar_cierre_sesion ?? null;
@@ -27,7 +28,7 @@ export async function consultarCierreSesion(usuarioId: string): Promise<boolean 
 
 export async function restablecerCierreSesion(usuarioId: string): Promise<void> {
   await pool.query(
-    "UPDATE sys.usuarios SET forzar_cierre_sesion = false WHERE id = $1",
+    "UPDATE sys.usuarios SET forzar_cierre_sesion = false WHERE id = $1 AND eliminado = false",
     [usuarioId]
   );
 }

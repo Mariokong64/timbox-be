@@ -28,9 +28,8 @@ CREATE TABLE IF NOT EXISTS sys.usuarios
     modificado_por_id uuid,
     foto_perfil text COLLATE pg_catalog."default",
     forzar_cierre_sesion boolean NOT NULL DEFAULT false,
+    eliminado boolean NOT NULL DEFAULT false,
     CONSTRAINT usuarios_pkey PRIMARY KEY (id),
-    CONSTRAINT usuarios_correo_key UNIQUE (correo),
-    CONSTRAINT usuarios_usuario_key UNIQUE (usuario),
     CONSTRAINT fk_usuarios_creado_por FOREIGN KEY (creado_por_id)
         REFERENCES sys.usuarios (id) MATCH SIMPLE
         ON UPDATE CASCADE
@@ -40,6 +39,12 @@ CREATE TABLE IF NOT EXISTS sys.usuarios
         ON UPDATE CASCADE
         ON DELETE SET NULL
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS ux_usuarios_correo_activo
+    ON sys.usuarios (lower(correo)) WHERE eliminado = false;
+
+CREATE UNIQUE INDEX IF NOT EXISTS ux_usuarios_usuario_activo
+    ON sys.usuarios (upper(usuario)) WHERE eliminado = false;
 
 CREATE TABLE IF NOT EXISTS sys.pantallas
 (

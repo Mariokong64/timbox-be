@@ -33,6 +33,7 @@ export async function obtenerUsuarios(): Promise<Usuario[]> {
   const query = `
     SELECT id, usuario, nombre, correo, foto_perfil, fecha_registro, creado, modificado
     FROM sys.usuarios
+    WHERE eliminado = false
     ORDER BY nombre ASC
   `;
 
@@ -45,7 +46,7 @@ export async function obtenerUsuarioPorId(id: string): Promise<Usuario | null> {
   const query = `
     SELECT id, usuario, nombre, correo, foto_perfil, fecha_registro, creado, modificado
     FROM sys.usuarios
-    WHERE id = $1
+    WHERE id = $1 AND eliminado = false
     LIMIT 1
   `;
 
@@ -61,11 +62,28 @@ export async function existeUsuarioPorNombre(usuario: string, excluirId: string 
       SELECT 1
       FROM sys.usuarios
       WHERE UPPER(usuario) = UPPER($1)
+        AND eliminado = false
         AND ($2::uuid IS NULL OR id <> $2::uuid)
     ) AS existe
   `;
 
   const result = await pool.query<{ existe: boolean }>(query, [usuario, excluirId]);
+
+  return Boolean(result.rows[0]?.existe);
+}
+
+export async function existeUsuarioPorCorreo(correo: string, excluirId: string | null): Promise<boolean> {
+  const query = `
+    SELECT EXISTS (
+      SELECT 1
+      FROM sys.usuarios
+      WHERE LOWER(correo) = LOWER($1)
+        AND eliminado = false
+        AND ($2::uuid IS NULL OR id <> $2::uuid)
+    ) AS existe
+  `;
+
+  const result = await pool.query<{ existe: boolean }>(query, [correo, excluirId]);
 
   return Boolean(result.rows[0]?.existe);
 }
@@ -144,7 +162,7 @@ export async function actualizarUsuario(datos: UsuarioDatosActualizacion): Promi
         contrasena = COALESCE($5, contrasena),
         modificado = CURRENT_TIMESTAMP,
         modificado_por_id = $6
-    WHERE id = $1
+    WHERE id = $1 AND eliminado = false
     RETURNING id, usuario, nombre, correo, foto_perfil, fecha_registro, creado, modificado
   `;
 
@@ -209,8 +227,40 @@ export async function actualizarUsuario(datos: UsuarioDatosActualizacion): Promi
   }
 }
 
-export async function eliminarUsuario(id: string): Promise<boolean> {
-  const result = await pool.query("DELETE FROM sys.usuarios WHERE id = $1", [id]);
+export async function eliminarUsuario(id: string, modificadoPorId: string | null): Promise<boolean> {
+  const cliente = await pool.connect();
 
-  return (result.rowCount ?? 0) > 0;
+  try {
+    await cliente.query("BEGIN");
+    const result = await cliente.query(`
+      UPDATE sys.usuarios
+      SET eliminado = true,
+          forzar_cierre_sesion = true,
+          modificado = CURRENT_TIMESTAMP,
+          modificado_por_id = $2
+      WHERE id = $1 AND eliminado = false
+    `, [id, modificadoPorId]);
+
+    if (!result.rowCount) {
+      await cliente.query("ROLLBACK");
+      return false;
+    }
+
+    await cliente.query(`
+      UPDATE sys.pantallas_usuarios
+      SET leer = false,
+          crear = false,
+          editar = false,
+          eliminar = false
+      WHERE usuario_id = $1
+    `, [id]);
+
+    await cliente.query("COMMIT");
+    return true;
+  } catch (error) {
+    await cliente.query("ROLLBACK");
+    throw error;
+  } finally {
+    cliente.release();
+  }
 }

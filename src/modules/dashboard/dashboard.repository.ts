@@ -9,8 +9,6 @@ import {
   ResumenValidadorRow,
   SerieDiariaDashboard,
   SerieDiariaDashboardRow,
-  SolicitudRecienteDashboard,
-  SolicitudRecienteDashboardRow,
 } from "./dashboard.types";
 
 function aNumero(valor: string | number | null | undefined): number {
@@ -31,23 +29,10 @@ function mapearSerieDiaria(row: SerieDiariaDashboardRow): SerieDiariaDashboard {
   };
 }
 
-function mapearSolicitudReciente(row: SolicitudRecienteDashboardRow): SolicitudRecienteDashboard {
-  return {
-    id: row.id,
-    nombre: row.nombre,
-    correo: row.correo,
-    estatus: row.estatus,
-    origen: row.origen,
-    fechaRegistro: row.fecha_registro,
-  };
-}
-
 const FUENTES_SOLICITUDES = `
   WITH solicitudes AS (
     SELECT
       sc.id,
-      sc.nombre,
-      sc.correo,
       es.estatus,
       'Formulario público'::text AS origen,
       sc.fecha_registro
@@ -60,8 +45,6 @@ const FUENTES_SOLICITUDES = `
 
     SELECT
       c.id,
-      sv.nombre,
-      sv.correo,
       CASE
         WHEN c.fecha_fin IS NOT NULL THEN 'Atendida'
         WHEN EXISTS (
@@ -76,8 +59,6 @@ const FUENTES_SOLICITUDES = `
       'Chat'::text AS origen,
       c.fecha_inicio AS fecha_registro
     FROM chatbot.conversaciones c
-    INNER JOIN chatbot.sesiones_visitantes sv
-      ON sv.id = c.sesion_visitante_id
   )
 `;
 
@@ -88,9 +69,7 @@ async function obtenerResumenContacto(): Promise<ResumenContactoDashboard> {
       COUNT(*) FILTER (WHERE estatus = 'Atendida') AS atendidas,
       COUNT(*) FILTER (
         WHERE estatus = 'Nueva' OR estatus ILIKE 'En atenci%'
-      ) AS pendientes,
-      COUNT(*) FILTER (WHERE estatus ILIKE 'En atenci%') AS en_atencion,
-      COUNT(*) FILTER (WHERE estatus = 'Descartada') AS descartadas
+      ) AS pendientes
     FROM solicitudes
   `;
 
@@ -149,25 +128,11 @@ async function obtenerResumenContacto(): Promise<ResumenContactoDashboard> {
     ORDER BY dias.fecha ASC
   `;
 
-  const recientesQuery = `${FUENTES_SOLICITUDES}
-    SELECT
-      id,
-      nombre,
-      correo,
-      estatus,
-      origen,
-      fecha_registro
-    FROM solicitudes
-    ORDER BY fecha_registro DESC
-    LIMIT 6
-  `;
-
-  const [resumen, porEstatus, porOrigen, porDia, recientes] = await Promise.all([
+  const [resumen, porEstatus, porOrigen, porDia] = await Promise.all([
     pool.query<ResumenContactoRow>(resumenQuery),
     pool.query<MetricaDashboardRow>(porEstatusQuery),
     pool.query<MetricaDashboardRow>(porOrigenQuery),
     pool.query<SerieDiariaDashboardRow>(porDiaQuery),
-    pool.query<SolicitudRecienteDashboardRow>(recientesQuery),
   ]);
   const fila = resumen.rows[0];
 
@@ -175,12 +140,9 @@ async function obtenerResumenContacto(): Promise<ResumenContactoDashboard> {
     total: aNumero(fila?.total),
     atendidas: aNumero(fila?.atendidas),
     pendientes: aNumero(fila?.pendientes),
-    enAtencion: aNumero(fila?.en_atencion),
-    descartadas: aNumero(fila?.descartadas),
     porEstatus: porEstatus.rows.map(mapearMetrica),
     porOrigen: porOrigen.rows.map(mapearMetrica),
     porDia: porDia.rows.map(mapearSerieDiaria),
-    recientes: recientes.rows.map(mapearSolicitudReciente),
   };
 }
 

@@ -8,25 +8,13 @@ export interface SerieDiariaDashboard {
   total: number;
 }
 
-export interface SolicitudRecienteDashboard {
-  id: string;
-  nombre: string;
-  correo: string;
-  estatus: string;
-  origen: string;
-  fechaRegistro: string;
-}
-
 export interface ResumenContactoDashboard {
   total: number;
   atendidas: number;
   pendientes: number;
-  enAtencion: number;
-  descartadas: number;
   porEstatus: MetricaDashboard[];
   porOrigen: MetricaDashboard[];
   porDia: SerieDiariaDashboard[];
-  recientes: SolicitudRecienteDashboard[];
 }
 
 export interface ResumenValidadorDashboard {
@@ -48,8 +36,6 @@ export interface ResumenContactoRow {
   total: string | number;
   atendidas: string | number;
   pendientes: string | number;
-  en_atencion: string | number;
-  descartadas: string | number;
 }
 
 export interface ResumenValidadorRow {
@@ -68,13 +54,4 @@ export interface MetricaDashboardRow {
 export interface SerieDiariaDashboardRow {
   fecha: string;
   total: string | number;
-}
-
-export interface SolicitudRecienteDashboardRow {
-  id: string;
-  nombre: string;
-  correo: string;
-  estatus: string;
-  origen: string;
-  fecha_registro: string;
 }
